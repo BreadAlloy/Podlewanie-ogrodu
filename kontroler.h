@@ -1,6 +1,7 @@
 struct kontroler{
 	uint8_t token = 0xFF; //token jest to wziecia
 	std::vector<pin_do_przekaznika> elektrozawory;
+	uint8_t ostatnio_grzebana_sekcja = 0xFF;
 
 	kontroler(std::vector<uint8_t> piny_do_zaworow, uint8_t pin_do_licznika_wody){
 		assert(end(piny_do_zaworow.size() == LICZBA_SEKCJI));
@@ -10,17 +11,21 @@ struct kontroler{
 		elektrozawory.resize(LICZBA_SEKCJI);
 		for(uint8_t i = 0; i < LICZBA_SEKCJI; i++){
 			elektrozawory[i] = pin_do_przekaznika(piny_do_zaworow[i]);
+			elektrozawory[i].ustaw_jako_output();
 		}
 	}
 
 	void bezpieczne_ustawienie(uint8_t sekcja, bool nowy_stan, uint8_t id, bool unsafe = 0){
 		//printf("AAS: %u\n", nowy_stan);
 		assert(end(id == token || unsafe));
-		for(uint8_t i = 0; i < elektrozawory.size(); i++){
-			if(i == sekcja) continue;
-			if(elektrozawory[i].stan && !unsafe){
-				logi.write("Zawor innej sekcji " + to_string(i) + "jest wlaczony.");
-				assert(end(0));
+		if((ostatnio_grzebana_sekcja == sekcja) && (nowy_stan == elektrozawory[ostatnio_grzebana_sekcja].stan)) return;
+		if(nowy_stan){
+			for(uint8_t i = 0; i < elektrozawory.size(); i++){
+				if(i == sekcja) continue;
+				if(elektrozawory[i].stan && !unsafe){
+					logi.write("Zawor innej sekcji " + to_string(i) + " jest wlaczony, gdy prubowano wlaczyc " + to_string(sekcja));
+					assert(end(0));
+				}
 			}
 		}
 		//if(elektrozawory[sekcja].stan == nowy_stan){

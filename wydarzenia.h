@@ -33,6 +33,7 @@ struct wydarzenie{
         uint8_t id;
         bool enabled;
         std::vector<sub_wydarzenie> sub_wydarzenia;
+	uint8_t index_ostatniego = 0;
         bool wybieracz_sterowania;
         // 0 czas
         // 1 objetosc
@@ -64,25 +65,34 @@ struct wydarzenie{
 	wydarzenie(){}
 
         bool czy_nalezy_wykonac(czas& zewnetrzny){
+		//printf("%s\n\n", str().c_str());
 		if(koniec < zewnetrzny) znajdz_nastepne(zewnetrzny);
-                return zewnetrzny > poczatek && enabled;
+                return zewnetrzny > poczatek && enabled && zewnetrzny < koniec;
         }
 
         void znajdz_nastepne(czas& zewnetrzny){
+		index_ostatniego = 0;
                 poczatek.mday = poczatek.mday + co_ile_dni;
                 poczatek.wday = poczatek.wday + co_ile_dni;
                 poczatek.normalizacja();
 		uint8_t i = 0;
-                while(!dozwolone_dnie[poczatek.wday] && i < 8){
-			if(poczatek > zewnetrzny) i++;
+		bool termin_w_przeszlosci = poczatek < zewnetrzny;
+                while(!(dozwolone_dnie[poczatek.wday] && !termin_w_przeszlosci) && i < 8){
+			if(!termin_w_przeszlosci || poczatek > zewnetrzny){
+				i++;
+				termin_w_przeszlosci = false;
+			}
                         poczatek.mday = poczatek.mday + co_ile_dni;
                         poczatek.wday = poczatek.wday + co_ile_dni;
                         poczatek.normalizacja();
                 }
 		if(i >= 8){
                 	enabled = false;
-			errory.write("Nie znaleziono mozliwego terminu. Wylaczam ten program: " + to_string(id) + ".");
+			errory.write("Nie znaleziono mozliwego terminu. Wylaczam ten program: " + to_string(id) + "."); //W pewnych warunkach jest powtarzane
+			return;
 		}
+		oblicz_czasy();
+		logi.write("Program " + to_string(id) + " znalazl kolejny poczatek o " + poczatek.str());
         }
 
 	void oblicz_czasy(){
@@ -101,6 +111,53 @@ struct wydarzenie{
 	}
 
 	bool akcja(czas& zewnetrzny){
+
+		if(wybieracz_sterowania){
+			//sterowanie objetoscia
+			if(sub_wydarzenia[index_ostatniego].ilosc <
+			   (uint16_t)wodomierz_l()){
+				zarzadca.bezpieczne_ustawienie(
+					sub_wydarzenia[index_ostatniego].sekcja
+					, 0, id);
+				index_ostatniego++;
+				wodomierz_reset();
+				if(index_ostatniego == sub_wydarzenia.size()){
+					znajdz_nastepne(zewnetrzny);
+					return false;
+				}
+			}
+			zarzadca.bezpieczne_ustawienie(
+				sub_wydarzenia[index_ostatniego].sekcja
+				, 1, id);
+
+			return true;
+
+		} else {
+			//sterowanie czasem
+
+			uint8_t index_czasu = index_ostatniego;
+			while(index_czasu < (przejsciowe.size() - 1) &&
+			      przejsciowe[index_czasu] < zewnetrzny){
+				index_czasu++;
+			}
+			if(index_ostatniego != index_czasu){
+				//printf("BOOP\n");
+				zarzadca.bezpieczne_ustawienie(
+					sub_wydarzenia[index_ostatniego].sekcja,
+					0, id);
+			}
+			if(index_czasu == (przejsciowe.size() - 1)){
+				//index_ostatniego = 0;
+				znajdz_nastepne(zewnetrzny);
+				return false;
+			}
+			zarzadca.bezpieczne_ustawienie(
+				sub_wydarzenia[index_czasu].sekcja,
+				1, id);
+			index_ostatniego = index_czasu;
+
+			return true;
+		}
 		//zarzadca.bezpieczne_ustawienie(1, 1, 1);
 
 

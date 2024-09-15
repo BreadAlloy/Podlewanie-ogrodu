@@ -7,18 +7,23 @@
 using namespace std;
 
 const uint8_t LICZBA_SEKCJI = 15;
-const uint8_t PIN_DO_WODOMIERZA = 21;
-const std::vector<uint8_t> PINY_DO_SEKCJI = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+const uint8_t PIN_DO_WODOMIERZA = 26;
+const std::vector<uint8_t> PINY_DO_SEKCJI = {10,24,9,25,11,8,5,7,6,12,13,16,20,19,21};
 
 const uint32_t OKOLO_LITRY_NA_MINUTE = 60;
 
 bool end(bool);
+
+uint64_t ZAPISZ_CO_ILE_KLATEK = 7200; //2 godzniy //1 klatka na sekunde
+uint64_t licznik_klatek = 0; // resetuje sie gdy plik jest zapisywany nawet z innych powodow
 
 #include "time_funcs.h"
 
 czas globalny_czas = czas();
 
 #include "misc.h"
+#include "zapisywanie.h"
+zapisywanie zapisywacz("save.txt");
 
 loger logi("log.log", globalny_czas);
 loger errory("errory.log", globalny_czas);
@@ -43,7 +48,7 @@ super_kontroler szef;
 std::basic_string<uint8_t> spakuj_stan(){
         uint32_t a = 0;
         for(uint8_t i = 0; i < LICZBA_SEKCJI; i++){
-	      if(zarzadca.elektrozawory[i].stan) printf("TAK\n");
+	      //if(zarzadca.elektrozawory[i].stan) printf("TAK\n");
               a |= (uint32_t)zarzadca.elektrozawory[i].stan << i;
         }
         uint8_t temp[] = {(uint8_t)(a >> 0), (uint8_t)(a >> 8), (uint8_t)(a >> 16), (uint8_t)(a >> 24),
@@ -58,7 +63,10 @@ std::basic_string<uint8_t> spakuj_stan(){
 
 
 void testing(std::basic_string<uint8_t> s){
+	zarzadca.wylacz_wszystkie();
+	zarzadca.token = 0xFF;
 	szef.z_char(s);
+	zapisywacz.zapisz(szef.do_char());
 	printf("Przyszlo:%s\n", s.c_str());
 }
 
@@ -100,9 +108,9 @@ int main(){
 	}
 #endif
 #if 0
-	pin_do_przekaznika *piny = new pin_do_przekaznika[liczba_sekcji + 1]; //piny[0] jest nieuzywany
+	pin_do_przekaznika *piny = new pin_do_przekaznika[LICZBA_SEKCJI + 1]; //piny[0] jest nieuzywany
 	gpio_init();
-	for(uint8_t i = 1; i <= liczba_sekcji; i++){
+	for(uint8_t i = 1; i <= LICZBA_SEKCJI; i++){
 		piny[i] = pin_do_przekaznika(i);
 		piny[i].ustaw_jako_output();
 		printf("----------------------------------------\n");
@@ -159,6 +167,8 @@ int main(){
 	printf("Pointer eth %p\n", &eth);
 	std::thread odbieracz(&polaczenie::reciever, &eth, testing);
 	//odbieracz.detach();
+	std::basic_string przeczytane = zapisywacz.przeczytaj();
+	if(przeczytane.length() > 0) szef.z_char(przeczytane);
 	while(true){
 		globalny_czas.update_time();
 		//if(eth.nowy_klient){
@@ -169,16 +179,21 @@ int main(){
 			//eth.emiter(buf);
 		//}
 		szef.tick();
-		if(wyslij_update){
+		if(wyslij_update && eth.reciever_running){
 			uint8_t temp[] = {(uint8_t)1};
 			eth.emiter(std::basic_string<uint8_t>(temp, 1) + spakuj_stan());
 			wyslij_update = false;
+		}
+		if(licznik_klatek > ZAPISZ_CO_ILE_KLATEK){
+			licznik_klatek = 0;
+			zapisywacz.zapisz(szef.do_char());
 		}
 		if(eth.reciever_running){
 			usleep(100);
 		} else {
 			sleep(1);
 		}
+		licznik_klatek++;
 	}
 
 

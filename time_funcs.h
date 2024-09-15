@@ -76,7 +76,7 @@ struct czas{
 		       std::to_string(min) + ":" +
 		       std::to_string(sec) + "   " +
 		       std::to_string(mday) + "." +
-		       std::to_string(mon) + "." +
+		       std::to_string(mon + 1) + "." +
 		       std::to_string(year);
 	}
 

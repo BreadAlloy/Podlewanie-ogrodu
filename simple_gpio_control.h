@@ -71,7 +71,7 @@ struct pin_do_przekaznika{
 		//logi.write("Ustawiam stan:" );
 		stan = nowy_stan;
 		//printf("Ustawiono stan %u na %u.\n", stan, number);
-		if(nowy_stan){
+		if(!nowy_stan){
 			*(volatile uint32_t*)(mmap_res + 0x1c) = 1 << number; //Ustaw stan wysoki
 		} else {
 			*(volatile uint32_t*)(mmap_res + 0x28) = 1 << number; //Ustaw stan niski

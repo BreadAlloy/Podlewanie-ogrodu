@@ -67,7 +67,7 @@ struct polaczenie{
 
 	void reciever(std::function<void(std::basic_string<uint8_t>)> f) {
         	char buffer[1024];
-		        printf("Pointer eth %p\n", this);
+		        //printf("Pointer eth %p\n", this);
         	while (true) {
 			if(reciever_running){
       		        	if (0 == recv(sock, buffer, 2, 0)) {
@@ -81,7 +81,7 @@ struct polaczenie{
         			if (0 == recv(sock, buffer, ile_przeczytac, 0)) {
        			            	reciever_running = false;
 				        //close(sock);
-					logi.write("ktos sie rozlaczyl\n");
+					logi.write("ktos sie rozlaczyl");
                 			continue;
             			}
            			std::basic_string<uint8_t> do_f((uint8_t*)buffer, ile_przeczytac);
@@ -94,10 +94,10 @@ struct polaczenie{
 	}
 
     void emiter(std::basic_string<uint8_t> buffer) {
-	printf("socket adress: %d\n", &sock);
-	printf("Wyslano cos\n");
+	//printf("socket adress: %d\n", &sock);
+	//printf("Wyslano cos\n");
         uint8_t temp[] = {(uint8_t)buffer.size(), (uint8_t)(buffer.size() >> 8)};
-	printf("Rozmiar: %d\n", buffer.size());
+	//printf("Rozmiar: %d\n", buffer.size());
         buffer = std::basic_string<uint8_t>(temp, 2) + buffer;
 	int er = send(sock, (char*)(buffer.c_str()), buffer.size(), 0);
         if(0 > er){

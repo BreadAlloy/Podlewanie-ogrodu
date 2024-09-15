@@ -13,7 +13,7 @@ struct super_kontroler{
 	}
 
 	void tick(){
-		if(zarzadca.token != 0xFF && !wydarzenia[zarzadca.token].akcja(globalny_czas) && !reczne){
+		if(!reczne && zarzadca.token != 0xFF && !wydarzenia[zarzadca.token].akcja(globalny_czas)){
 			logi.write("Program " + to_string(zarzadca.token) + "oddaje token");
 			zarzadca.token = 0xFF;
 		}
@@ -23,8 +23,10 @@ struct super_kontroler{
 				//if(reczne_stany[i]) printf("saasddasd\n");
 				zarzadca.bezpieczne_ustawienie(i, reczne_stany[i], 0, 1);
 			}
+			//break;
 		}
 		for(uint8_t i = 0; i < wydarzenia.size(); i++){
+			if(i == zarzadca.token) continue;
 			if(wydarzenia[i].czy_nalezy_wykonac(globalny_czas)){
 				logi.write("Program " + to_string(i) + " sygnalizuje gotowosc do wykonania");
 				if(zarzadca.token == 0xFF){
